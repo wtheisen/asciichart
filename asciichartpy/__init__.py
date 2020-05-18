@@ -128,7 +128,18 @@ def plot(series, cfg=None):
         return int(round(clamp(y) * ratio) - min2)
 
     rows = max2 - min2
+
+    if width:
+        if len(series) % width != 0:
+            Q = int(len(series) / width) + 1
+            Z = (Q * 30) - len(series)
+
+            series += [series[-1] for i in range(0, Z)]
+        else:
+            Q = int(lene(y_vals) / 30)
+        series = [sum(series[i:i+Q])//Q for i in range(0, len(series), Q)]
     width = len(series) + offset
+
     placeholder = cfg.get('format', '{:8.2f} ')
 
     result = [[' '] * width for i in range(rows + 1)]
@@ -160,15 +171,6 @@ def plot(series, cfg=None):
 
     # plot the line
 
-    if width:
-        if len(series) % width != 0:
-            Q = int(len(series) / width) + 1
-            Z = (Q * 30) - len(series)
-
-            series += [series[-1] for i in range(0, Z)]
-        else:
-            Q = int(lene(y_vals) / 30)
-        series = [sum(series[i:i+Q])//Q for i in range(0, len(series), Q)]
 
     for x in range(len(series) - 1):
         d0 = series[x + 0]
