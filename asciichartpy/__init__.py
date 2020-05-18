@@ -64,6 +64,27 @@ def plot(series, cfg=None):
            20.00  ┤╭╯    ╰╮
            10.00  ┼╯      ╰
 
+    `color` specifies a tuple with ascii escape sequence(s) to wrap the graphs
+    in, if threshold is in use, then the first color will be used if the final
+    value is above the threshold, the second if below.
+    
+        >>> print(plot(series, {'colors': ('\033[0;32;40m')}))
+
+    `threshold` specifies a y-value that will change the coloring of the graph
+    depending on whether the final value in the series is above or below the
+    threshold.
+
+        >>> print(plot(series, {'threshold': 25}))
+
+    `width` can be used to specifiy the number of characters you want the graph
+    to span. The series will be averaged over `width` steps to ensure it fits.
+    If the length of the series is not evenly divisible by `width`, the series
+    will be padded with the final value to reach the next evenly divisible
+    number (this leads to an overly long flat line right at the end of the
+    chart).
+
+        >>> print(plot(series, {'width': 30}))
+
     `format` specifies a Python format string used to format the labels on the
     y-axis. The default value is "{:8.2f} ". This can be used to remove the
     decimal point:
@@ -93,6 +114,10 @@ def plot(series, cfg=None):
     height = cfg.get('height', interval)
     ratio = height / interval if interval > 0 else 1
 
+    threshold = cfg.get('threshold', None)
+    color = cfg.get('color', ('', ''))
+    width = cfg.get('width', None)
+
     min2 = int(floor(minimum * ratio))
     max2 = int(ceil(maximum * ratio))
 
@@ -112,14 +137,39 @@ def plot(series, cfg=None):
     for y in range(min2, max2 + 1):
         label = placeholder.format(maximum - ((y - min2) * interval / (rows if rows else 1)))
         result[y - min2][max(offset - len(label), 0)] = label
-        result[y - min2][offset - 1] = symbols[0] if y == 0 else symbols[1]  # zero tick mark
+        if color:
+            if threshold:
+                if series[-1] > threshold:
+                    result[y - min2][offset - 1] = symbols[0] + color if y == 0 else symbols[1] + color[0]  # zero tick mark
+                else:
+                    result[y - min2][offset - 1] = symbols[0] + color if y == 0 else symbols[1] + color[1]  # zero tick mark
+            else:
+                result[y - min2][offset - 1] = symbols[0] + color if y == 0 else symbols[1] + color  # zero tick mark
+        else:
+            result[y - min2][offset - 1] = symbols[0] if y == 0 else symbols[1]  # zero tick mark
 
     # first value is a tick mark across the y-axis
     d0 = series[0]
     if _isnum(d0):
-        result[rows - scaled(d0)][offset - 1] = symbols[0]
+        if threshold:
+            if series[-1] > threshold:
+                result[rows - scaled(d0)][offset - 1] = symbols[0] + color[0]
+            else:
+                result[rows - scaled(d0)][offset - 1] = symbols[0] + color[1]
+
 
     # plot the line
+
+    if width:
+        if len(series) % width != 0:
+            Q = int(len(series) / width) + 1
+            Z = (Q * 30) - len(series)
+
+            series += [series[-1] for i in range(0, Z)]
+        else:
+            Q = int(lene(y_vals) / 30)
+        series = [sum(series[i:i+Q])//Q for i in range(0, len(series), Q)]
+
     for x in range(len(series) - 1):
         d0 = series[x + 0]
         d1 = series[x + 1]
@@ -149,4 +199,5 @@ def plot(series, cfg=None):
         for y in range(start, end):
             result[rows - y][x + offset] = symbols[9]
 
-    return '\n'.join([''.join(row).rstrip() for row in result])
+
+    return '\033[0m\n'.join([''.join(row).rstrip() for row in result])
